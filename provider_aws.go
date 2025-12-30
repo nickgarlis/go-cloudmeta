@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const awsMetadataURL = "http://169.254.169.254/"
+const awsMetadataURL = "http://169.254.169.254"
 
 type AWSProvider struct {
 	baseURL string
@@ -95,7 +95,12 @@ func (p *AWSProvider) fetchMetadata(ctx context.Context, path string) (string, e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return "", ErrNotFound
+	case http.StatusOK:
+		// continue
+	default:
 		return "", fmt.Errorf("HTTP %d for %s", resp.StatusCode, path)
 	}
 
@@ -126,10 +131,7 @@ func (p *AWSProvider) GetHostname(ctx context.Context) (string, error) {
 	return p.fetchMetadata(ctx, "/latest/meta-data/hostname")
 }
 
+// GetPrimaryIPv6 returns the primary IPv6 address
 func (p *AWSProvider) GetPrimaryIPv6(ctx context.Context) (string, error) {
-	ipv6, err := p.fetchMetadata(ctx, "/latest/meta-data/ipv6")
-	if err != nil {
-		return "", err
-	}
-	return ipv6, nil
+	return p.fetchMetadata(ctx, "/latest/meta-data/ipv6")
 }
