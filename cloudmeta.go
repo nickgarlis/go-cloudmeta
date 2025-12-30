@@ -7,6 +7,11 @@ import (
 
 type Provider interface {
 	Name() string
+	GetInstanceID(ctx context.Context) (string, error)
+	GetHostname(ctx context.Context) (string, error)
+	GetPrivateIPv4(ctx context.Context) (string, error)
+	GetPublicIPv4(ctx context.Context) (string, error)
+	GetPrimaryIPv6(ctx context.Context) (string, error)
 }
 
 type detector func(ctx context.Context, baseURL ...string) Provider
@@ -35,6 +40,11 @@ func detectProvider(ctx context.Context, baseURL ...string) (Provider, error) {
 	providers := []detector{
 		detectAWS,
 		detectGCP,
+		detectAzure,
+		detectOCI,
+		detectHetzner,
+		detectOpenStack,
+		detectDigitalOcean,
 	}
 
 	for _, d := range providers {

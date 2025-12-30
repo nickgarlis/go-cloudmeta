@@ -28,13 +28,6 @@ func TestGCPProvider_WithMockServer(t *testing.T) {
 		want interface{}
 	}{
 		{
-			name: "GetProjectID",
-			do: func(p *GCPProvider) (interface{}, error) {
-				return p.GetProjectID(ctx)
-			},
-			want: "my-test-project",
-		},
-		{
 			name: "GetInstanceID",
 			do: func(p *GCPProvider) (interface{}, error) {
 				return p.GetInstanceID(ctx)
@@ -61,17 +54,6 @@ func TestGCPProvider_WithMockServer(t *testing.T) {
 				return p.GetHostname(ctx)
 			},
 			want: "test-instance-1.c.my-test-project.internal",
-		},
-		{
-			name: "GetIPv6s",
-			do: func(p *GCPProvider) (interface{}, error) {
-				return p.GetIPv6s(ctx)
-			},
-			want: []string{
-				"2001:db8:85a3::8a2e:370:7334",
-				"2001:db8:85a3::8a2e:370:7335",
-				"2001:db8:85a3::8a2e:370:7336",
-			},
 		},
 		{
 			name: "GetPrimaryIPv6",

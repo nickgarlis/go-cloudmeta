@@ -7,9 +7,9 @@ A lightweight Go library for detecting cloud providers and accessing basic insta
 
 ## Features
 
-- **Auto-detection** - Automatically detects AWS or GCP
-- **Multi-cloud** - Supports AWS and Google Cloud Platform
-- **Zero dependencies** - Uses only Go standard library
+- **Auto-detection** - Automatically detects cloud provider
+- **Multi-cloud** - Supports multiple cloud providers
+- **Zero dependencies** - Only uses Go standard library
 
 ## Installation
 
@@ -40,18 +40,11 @@ func main() {
 
     fmt.Printf("Running on: %s\n", provider.Name())
 
-    switch p := provider.(type) {
-    case *cloudmeta.AWSProvider:
-        instanceID, _ := p.GetInstanceID(ctx)
-        privateIP, _ := p.GetPrivateIPv4(ctx)
-        hostname, _ := p.GetHostname(ctx)
-
-    case *cloudmeta.GCPProvider:
-        projectID, _ := p.GetProjectID(ctx)
-        instanceID, _ := p.GetInstanceID(ctx)
-        privateIP, _ := p.GetPrivateIPv4(ctx)
-        hostname, _ := p.GetHostname(ctx)
+    privateIP, err := provider.GetPrivateIPv4(ctx)
+    if err != nil {
+        log.Fatal(err)
     }
+    fmt.Printf("Private IPv4: %s\n", privateIP)
 }
 ```
 
@@ -61,27 +54,13 @@ func main() {
 
 ```go
 type Provider interface {
-    Name() string // Returns "aws" or "gcp"
+    Name() string
+    GetInstanceID(ctx context.Context) (string, error)
+    GetPrivateIPv4(ctx context.Context) (string, error)
+    GetPublicIPv4(ctx context.Context) (string, error)
+    GetHostname(ctx context.Context) (string, error)
+    GetPrimaryIPv6(ctx context.Context) (string, error)
 }
-```
-
-### AWS Provider
-
-```go
-GetInstanceID(ctx) (string, error)    // i-1234567890abcdef0
-GetPrivateIPv4(ctx) (string, error)   // 10.0.1.100
-GetPublicIPv4(ctx) (string, error)    // 54.123.45.67
-GetHostname(ctx) (string, error)      // ip-10-0-1-100.compute.internal
-```
-
-### GCP Provider
-
-```go
-GetProjectID(ctx) (string, error)     // my-project-123
-GetInstanceID(ctx) (string, error)    // 1234567890123456789
-GetPrivateIPv4(ctx) (string, error)   // 10.128.0.5
-GetPublicIPv4(ctx) (string, error)    // 34.123.45.67
-GetHostname(ctx) (string, error)      // instance-1.c.my-project.internal
 ```
 
 ## Error Handling
@@ -94,15 +73,25 @@ if err != nil {
     }
     // Handle other errors
 }
+
+ipv6, err := provider.GetPrimaryIPv6(ctx)
+if err != nil {
+    if errors.Is(err, cloudmeta.ErrNotFound) {
+        // Handle not found case
+    }
+    // Handle error
+}
 ```
 
 ## Supported Platforms
 
 - [x] AWS
 - [x] Google Cloud Platform
-- [ ] Microsoft Azure
-- [ ] DigitalOcean
-- [ ] OpenStack-based clouds
+- [x] Microsoft Azure
+- [x] DigitalOcean
+- [x] Hetzner Cloud
+- [x] Oracle Cloud Infrastructure
+- [x] OpenStack-based clouds
 
 ## License
 

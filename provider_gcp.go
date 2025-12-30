@@ -47,8 +47,8 @@ func newGCPProvider(baseURL ...string) *GCPProvider {
 func detectGCP(ctx context.Context, baseURL ...string) Provider {
 	provider := newGCPProvider(baseURL...)
 
-	// Try to get project ID - if successful with correct headers, we're on GCP
-	_, err := provider.GetProjectID(ctx)
+	// Try to get instance ID - if successful with correct headers, we're on GCP
+	_, err := provider.GetInstanceID(ctx)
 	if err == nil {
 		return provider
 	}
@@ -86,11 +86,6 @@ func (p *GCPProvider) fetchMetadata(ctx context.Context, path string) (string, e
 	return strings.TrimSpace(string(body)), nil
 }
 
-// GetProjectID returns the GCP project ID
-func (p *GCPProvider) GetProjectID(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/computeMetadata/v1/project/project-id")
-}
-
 // GetInstanceID returns the GCP instance ID
 func (p *GCPProvider) GetInstanceID(ctx context.Context) (string, error) {
 	return p.fetchMetadata(ctx, "/computeMetadata/v1/instance/id")
@@ -111,7 +106,7 @@ func (p *GCPProvider) GetHostname(ctx context.Context) (string, error) {
 	return p.fetchMetadata(ctx, "/computeMetadata/v1/instance/hostname")
 }
 
-func (p *GCPProvider) GetIPv6s(ctx context.Context) ([]string, error) {
+func (p *GCPProvider) getIPv6s(ctx context.Context) ([]string, error) {
 	ipv6s, err := p.fetchMetadata(ctx, "/computeMetadata/v1/instance/network-interfaces/0/ipv6s")
 	if err != nil {
 		return nil, err
@@ -120,12 +115,12 @@ func (p *GCPProvider) GetIPv6s(ctx context.Context) ([]string, error) {
 }
 
 func (p *GCPProvider) GetPrimaryIPv6(ctx context.Context) (string, error) {
-	ipv6s, err := p.GetIPv6s(ctx)
+	ipv6s, err := p.getIPv6s(ctx)
 	if err != nil {
 		return "", err
 	}
 	if len(ipv6s) == 0 {
-		return "", fmt.Errorf("no IPv6 addresses found")
+		return "", ErrNotFound
 	}
 	return ipv6s[0], nil
 }

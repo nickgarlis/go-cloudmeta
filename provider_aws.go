@@ -85,9 +85,11 @@ func (p *AWSProvider) fetchMetadata(ctx context.Context, path string) (string, e
 		return "", err
 	}
 
-	if token, err := p.GetIMDSv2Token(ctx); err == nil && token != "" {
-		req.Header.Set("X-aws-ec2-metadata-token", token)
+	token, err := p.GetIMDSv2Token(ctx)
+	if err != nil {
+		return "", err
 	}
+	req.Header.Set("X-aws-ec2-metadata-token", token)
 
 	resp, err := p.client.Do(req)
 	if err != nil {

@@ -25,10 +25,6 @@ func CreateMockGCPServer(disabled ...bool) *httptest.Server {
 		}
 
 		switch r.URL.Path {
-		case "/computeMetadata/v1/project/project-id":
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("my-test-project"))
-
 		case "/computeMetadata/v1/instance/id":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("1234567890123456789"))
@@ -45,6 +41,7 @@ func CreateMockGCPServer(disabled ...bool) *httptest.Server {
 			w.WriteHeader(http.StatusOK)
 			ips := []string{"2001:db8:85a3::8a2e:370:7334", "2001:db8:85a3::8a2e:370:7335", "2001:db8:85a3::8a2e:370:7336"}
 			w.Write([]byte(strings.Join(ips, "\n")))
+
 		case "/computeMetadata/v1/instance/hostname":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("test-instance-1.c.my-test-project.internal"))
