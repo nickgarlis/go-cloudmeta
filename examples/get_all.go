@@ -12,11 +12,13 @@ func main() {
 	provider, err := cloudmeta.GetProvider(context.Background())
 	if err != nil {
 		if errors.Is(err, cloudmeta.ErrUnknownProvider) {
-			fmt.Println("unknown cloud provider")
+			fmt.Println("Unknown cloud provider")
 			return
 		}
 		panic(err)
 	}
+
+	fmt.Printf("Cloud Provider: %s\n", provider.Name())
 
 	fmt.Printf("Instance ID: ")
 	instanceID, err := provider.GetInstanceID(context.Background())
