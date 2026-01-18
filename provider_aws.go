@@ -1,13 +1,12 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
+	"net/netip"
 	"strings"
-	"time"
 )
 
 const awsMetadataURL = "http://169.254.169.254"
@@ -26,14 +25,7 @@ func newAWSProvider(baseURL ...string) *AWSProvider {
 	if len(baseURL) > 0 && baseURL[0] != "" {
 		url = strings.TrimSuffix(baseURL[0], "/")
 	}
-	client := &http.Client{
-		Timeout: 2 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: 1 * time.Second,
-			}).DialContext,
-		},
-	}
+	client := newHttpClient()
 
 	return &AWSProvider{client: client, baseURL: url}
 }
@@ -114,26 +106,22 @@ func (p *AWSProvider) fetchMetadata(ctx context.Context, path string) (string, e
 	return strings.TrimSpace(string(body)), nil
 }
 
-func (p *AWSProvider) GetInstanceID(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/latest/meta-data/instance-id")
-}
-
-// GetPrivateIPv4 returns the private IPv4 address
-func (p *AWSProvider) GetPrivateIPv4(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/latest/meta-data/local-ipv4")
-}
-
 // GetPublicIPv4 returns the public IPv4 address
-func (p *AWSProvider) GetPublicIPv4(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/latest/meta-data/public-ipv4")
-}
+func (p *AWSProvider) GetPublicIPv4(ctx context.Context) (netip.Addr, error) {
+	ipv4, err := p.fetchMetadata(ctx, "/latest/meta-data/public-ipv4")
+	if err != nil {
+		return netip.Addr{}, err
+	}
 
-// GetHostname returns the instance hostname
-func (p *AWSProvider) GetHostname(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/latest/meta-data/hostname")
+	return netip.ParseAddr(ipv4)
 }
 
 // GetPrimaryIPv6 returns the primary IPv6 address
-func (p *AWSProvider) GetPrimaryIPv6(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/latest/meta-data/ipv6")
+func (p *AWSProvider) GetPrimaryIPv6(ctx context.Context) (netip.Addr, error) {
+	ipv6, err := p.fetchMetadata(ctx, "/latest/meta-data/ipv6")
+	if err != nil {
+		return netip.Addr{}, err
+	}
+
+	return netip.ParseAddr(ipv6)
 }

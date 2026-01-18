@@ -1,11 +1,12 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
+	"net/netip"
 	"reflect"
 	"testing"
 
-	"github.com/nickgarlis/go-cloudmeta/internal/test"
+	"github.com/nickgarlis/go-ipdetect/internal/test"
 )
 
 func TestGCPProvider_Name(t *testing.T) {
@@ -24,43 +25,22 @@ func TestGCPProvider_WithMockServer(t *testing.T) {
 
 	tt := []struct {
 		name string
-		do   func(p *GCPProvider) (interface{}, error)
-		want interface{}
+		do   func(p *GCPProvider) (netip.Addr, error)
+		want netip.Addr
 	}{
 		{
-			name: "GetInstanceID",
-			do: func(p *GCPProvider) (interface{}, error) {
-				return p.GetInstanceID(ctx)
-			},
-			want: "1234567890123456789",
-		},
-		{
-			name: "GetPrivateIPv4",
-			do: func(p *GCPProvider) (interface{}, error) {
-				return p.GetPrivateIPv4(ctx)
-			},
-			want: "10.128.0.5",
-		},
-		{
 			name: "GetPublicIPv4",
-			do: func(p *GCPProvider) (interface{}, error) {
+			do: func(p *GCPProvider) (netip.Addr, error) {
 				return p.GetPublicIPv4(ctx)
 			},
-			want: "34.123.45.67",
-		},
-		{
-			name: "GetHostname",
-			do: func(p *GCPProvider) (interface{}, error) {
-				return p.GetHostname(ctx)
-			},
-			want: "test-instance-1.c.my-test-project.internal",
+			want: netip.MustParseAddr("34.123.45.67"),
 		},
 		{
 			name: "GetPrimaryIPv6",
-			do: func(p *GCPProvider) (interface{}, error) {
+			do: func(p *GCPProvider) (netip.Addr, error) {
 				return p.GetPrimaryIPv6(ctx)
 			},
-			want: "2001:db8:85a3::8a2e:370:7334",
+			want: netip.MustParseAddr("2001:db8:85a3::8a2e:370:7334"),
 		},
 	}
 

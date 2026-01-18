@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// CreateMockGCPServer creates a minimal mock server for GCP metadata service
 func CreateMockGCPServer(disabled ...bool) *httptest.Server {
 	isDisabled := len(disabled) > 0 && disabled[0]
 
@@ -28,10 +27,6 @@ func CreateMockGCPServer(disabled ...bool) *httptest.Server {
 		case "/computeMetadata/v1/instance/id":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("1234567890123456789"))
-
-		case "/computeMetadata/v1/instance/network-interfaces/0/ip":
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("10.128.0.5"))
 
 		case "/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip":
 			w.WriteHeader(http.StatusOK)

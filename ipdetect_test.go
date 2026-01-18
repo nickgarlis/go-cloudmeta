@@ -1,25 +1,17 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
-	"sync"
 	"testing"
 
-	"github.com/nickgarlis/go-cloudmeta/internal/test"
+	"github.com/nickgarlis/go-ipdetect/internal/test"
 )
 
-func resetCache() {
-	cachedProvider = nil
-	once = sync.Once{}
-}
-
 func TestGetProviderAWS(t *testing.T) {
-	resetCache()
-
 	mockServer := test.CreateMockAWSServer(false)
 	defer mockServer.Close()
 
-	provider, err := getProvider(context.TODO(), mockServer.URL)
+	provider, err := detectProvider(context.TODO(), mockServer.URL)
 	if err != nil {
 		t.Fatalf("Failed to get provider: %v", err)
 	}
@@ -41,12 +33,10 @@ func TestGetProviderAWS(t *testing.T) {
 }
 
 func TestGetProviderGCP(t *testing.T) {
-	resetCache()
-
 	mockServer := test.CreateMockGCPServer()
 	defer mockServer.Close()
 
-	provider, err := getProvider(context.TODO(), mockServer.URL)
+	provider, err := detectProvider(context.TODO(), mockServer.URL)
 	if err != nil {
 		t.Fatalf("Failed to get provider: %v", err)
 	}

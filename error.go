@@ -1,8 +1,7 @@
-package cloudmeta
+package ipdetect
 
 import "errors"
 
 var (
-	ErrUnknownProvider = errors.New("unknown cloud provider")
-	ErrNotFound        = errors.New("not found")
+	ErrNotFound = errors.New("not found")
 )

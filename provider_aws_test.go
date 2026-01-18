@@ -1,10 +1,11 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
+	"net/netip"
 	"testing"
 
-	"github.com/nickgarlis/go-cloudmeta/internal/test"
+	"github.com/nickgarlis/go-ipdetect/internal/test"
 )
 
 func TestAWSProvider_Name(t *testing.T) {
@@ -63,23 +64,6 @@ func TestAWSProvider_GetIMDSv2Token(t *testing.T) {
 	}
 }
 
-func TestAWSProvider_TestGetPrivateIPv4(t *testing.T) {
-	server := test.CreateMockAWSServer()
-	defer server.Close()
-
-	provider := newAWSProvider(server.URL)
-	ctx := context.Background()
-
-	ip, err := provider.GetPrivateIPv4(ctx)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
-	}
-	expectedIP := "10.0.1.100"
-	if ip != expectedIP {
-		t.Errorf("Expected IP %s, got %s", expectedIP, ip)
-	}
-}
-
 func TestAWSProvider_TestGetPublicIPv4(t *testing.T) {
 	server := test.CreateMockAWSServer()
 	defer server.Close()
@@ -91,7 +75,7 @@ func TestAWSProvider_TestGetPublicIPv4(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
-	expectedIP := "54.123.45.67"
+	expectedIP := netip.MustParseAddr("54.123.45.67")
 
 	if ip != expectedIP {
 		t.Errorf("Expected IP %s, got %s", expectedIP, ip)

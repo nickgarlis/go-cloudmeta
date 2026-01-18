@@ -1,12 +1,12 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"strings"
-	"time"
 )
 
 const ociMetadataURL = "http://169.254.169.254"
@@ -27,7 +27,7 @@ func newOCIProvider(baseURL ...string) *OCIProvider {
 	}
 
 	return &OCIProvider{
-		client:  &http.Client{Timeout: 2 * time.Second},
+		client:  newHttpClient(),
 		baseURL: url,
 	}
 }
@@ -36,7 +36,7 @@ func detectOCI(ctx context.Context, baseURL ...string) Provider {
 	provider := newOCIProvider(baseURL...)
 
 	// Try to get instance ID - if successful, we're on OCI
-	_, err := provider.GetInstanceID(ctx)
+	_, err := provider.getInstanceID(ctx)
 	if err == nil {
 		return provider
 	}
@@ -56,33 +56,38 @@ func (p *OCIProvider) fetch(ctx context.Context, path string) (string, error) {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
+	switch resp.StatusCode {
+	case http.StatusNotFound:
 		return "", ErrNotFound
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	case http.StatusOK:
+		// continue
+	default:
+		return "", fmt.Errorf("HTTP %d for %s", resp.StatusCode, path)
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	return strings.TrimSpace(string(body)), nil
 }
 
-func (p *OCIProvider) GetInstanceID(ctx context.Context) (string, error) {
+func (p *OCIProvider) fetchAddr(ctx context.Context, path string) (netip.Addr, error) {
+	addrStr, err := p.fetch(ctx, path)
+	if err != nil {
+		return netip.Addr{}, err
+	}
+	return netip.ParseAddr(addrStr)
+}
+
+func (p *OCIProvider) getInstanceID(ctx context.Context) (string, error) {
 	return p.fetch(ctx, "/opc/v2/instance/id")
 }
 
-func (p *OCIProvider) GetPrivateIPv4(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/opc/v2/vnics/0/privateIp")
+func (p *OCIProvider) GetPublicIPv4(ctx context.Context) (netip.Addr, error) {
+	return p.fetchAddr(ctx, "/opc/v2/vnics/0/publicIp")
 }
 
-func (p *OCIProvider) GetPublicIPv4(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/opc/v2/vnics/0/publicIp")
-}
-
-func (p *OCIProvider) GetHostname(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/opc/v2/instance/hostname")
-}
-
-func (p *OCIProvider) GetPrimaryIPv6(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/opc/v2/vnics/0/ipv6")
+func (p *OCIProvider) GetPrimaryIPv6(ctx context.Context) (netip.Addr, error) {
+	return p.fetchAddr(ctx, "/opc/v2/vnics/0/ipv6")
 }

@@ -1,12 +1,12 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"strings"
-	"time"
 )
 
 const openStackMetadataURL = "http://169.254.169.254"
@@ -27,7 +27,7 @@ func newOpenStackProvider(baseURL ...string) *OpenStackProvider {
 	}
 
 	return &OpenStackProvider{
-		client:  &http.Client{Timeout: 2 * time.Second},
+		client:  newHttpClient(),
 		baseURL: url,
 	}
 }
@@ -41,7 +41,7 @@ func detectOpenStack(ctx context.Context, baseURL ...string) Provider {
 	}
 
 	// Fallback to instance-id
-	if _, err := provider.GetInstanceID(ctx); err == nil {
+	if _, err := provider.getInstanceID(ctx); err == nil {
 		return provider
 	}
 
@@ -57,33 +57,38 @@ func (p *OpenStackProvider) fetch(ctx context.Context, path string) (string, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode == http.StatusNotFound {
+	switch resp.StatusCode {
+	case http.StatusNotFound:
 		return "", ErrNotFound
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("HTTP %d", resp.StatusCode)
+	case http.StatusOK:
+		// continue
+	default:
+		return "", fmt.Errorf("HTTP %d for %s", resp.StatusCode, path)
 	}
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
 	return strings.TrimSpace(string(body)), nil
 }
 
-func (p *OpenStackProvider) GetInstanceID(ctx context.Context) (string, error) {
+func (p *OpenStackProvider) fetchAddr(ctx context.Context, path string) (netip.Addr, error) {
+	addrStr, err := p.fetch(ctx, path)
+	if err != nil {
+		return netip.Addr{}, err
+	}
+	return netip.ParseAddr(addrStr)
+}
+
+func (p *OpenStackProvider) getInstanceID(ctx context.Context) (string, error) {
 	return p.fetch(ctx, "/openstack/latest/meta_data/uuid")
 }
 
-func (p *OpenStackProvider) GetPrivateIPv4(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/openstack/latest/meta_data/local-ipv4")
+func (p *OpenStackProvider) GetPublicIPv4(ctx context.Context) (netip.Addr, error) {
+	return p.fetchAddr(ctx, "/openstack/latest/meta_data/public-ipv4")
 }
 
-func (p *OpenStackProvider) GetPublicIPv4(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/openstack/latest/meta_data/public-ipv4")
-}
-
-func (p *OpenStackProvider) GetHostname(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/openstack/latest/meta_data/hostname")
-}
-
-func (p *OpenStackProvider) GetPrimaryIPv6(ctx context.Context) (string, error) {
-	return p.fetch(ctx, "/openstack/latest/meta_data/public-ipv6")
+func (p *OpenStackProvider) GetPrimaryIPv6(ctx context.Context) (netip.Addr, error) {
+	return p.fetchAddr(ctx, "/openstack/latest/meta_data/public-ipv6")
 }

@@ -5,7 +5,6 @@ import (
 	"net/http/httptest"
 )
 
-// CreateMockAWSServer creates a shared mock server for AWS metadata service
 func CreateMockAWSServer(disabled ...bool) *httptest.Server {
 	isDisabled := len(disabled) > 0 && disabled[0]
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -44,14 +43,6 @@ func CreateMockAWSServer(disabled ...bool) *httptest.Server {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("i-1234567890abcdef0"))
 
-		case "/latest/meta-data/ami-id":
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("ami-0abcdef1234567890"))
-
-		case "/latest/meta-data/local-ipv4":
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("10.0.1.100"))
-
 		case "/latest/meta-data/public-ipv4":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("54.123.45.67"))
@@ -59,10 +50,6 @@ func CreateMockAWSServer(disabled ...bool) *httptest.Server {
 		case "/latest/meta-data/ipv6":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("2001:0db8:85a3:0000:0000:8a2e:0370:7334"))
-
-		case "/latest/meta-data/hostname":
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("ip-10-0-1-100.us-west-2.compute.internal"))
 
 		default:
 			w.WriteHeader(http.StatusNotFound)

@@ -1,13 +1,12 @@
-package cloudmeta
+package ipdetect
 
 import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
+	"net/netip"
 	"strings"
-	"time"
 )
 
 const gcpMetadataURL = "http://169.254.169.254"
@@ -28,17 +27,8 @@ func newGCPProvider(baseURL ...string) *GCPProvider {
 		url = strings.TrimSuffix(baseURL[0], "/")
 	}
 
-	client := &http.Client{
-		Timeout: 2 * time.Second,
-		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: 1 * time.Second,
-			}).DialContext,
-		},
-	}
-
 	return &GCPProvider{
-		client:  client,
+		client:  newHttpClient(),
 		baseURL: url,
 	}
 }
@@ -48,7 +38,7 @@ func detectGCP(ctx context.Context, baseURL ...string) Provider {
 	provider := newGCPProvider(baseURL...)
 
 	// Try to get instance ID - if successful with correct headers, we're on GCP
-	_, err := provider.GetInstanceID(ctx)
+	_, err := provider.getInstanceID(ctx)
 	if err == nil {
 		return provider
 	}
@@ -74,7 +64,12 @@ func (p *GCPProvider) fetchMetadata(ctx context.Context, path string) (string, e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return "", ErrNotFound
+	case http.StatusOK:
+		// continue
+	default:
 		return "", fmt.Errorf("HTTP %d for %s", resp.StatusCode, path)
 	}
 
@@ -86,24 +81,16 @@ func (p *GCPProvider) fetchMetadata(ctx context.Context, path string) (string, e
 	return strings.TrimSpace(string(body)), nil
 }
 
-// GetInstanceID returns the GCP instance ID
-func (p *GCPProvider) GetInstanceID(ctx context.Context) (string, error) {
+func (p *GCPProvider) getInstanceID(ctx context.Context) (string, error) {
 	return p.fetchMetadata(ctx, "/computeMetadata/v1/instance/id")
 }
 
-// GetPrivateIPv4 returns the private IPv4 address
-func (p *GCPProvider) GetPrivateIPv4(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/computeMetadata/v1/instance/network-interfaces/0/ip")
-}
-
-// GetPublicIPv4 returns the public IPv4 address
-func (p *GCPProvider) GetPublicIPv4(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
-}
-
-// GetHostname returns the instance hostname
-func (p *GCPProvider) GetHostname(ctx context.Context) (string, error) {
-	return p.fetchMetadata(ctx, "/computeMetadata/v1/instance/hostname")
+func (p *GCPProvider) GetPublicIPv4(ctx context.Context) (netip.Addr, error) {
+	ipStr, err := p.fetchMetadata(ctx, "/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip")
+	if err != nil {
+		return netip.Addr{}, err
+	}
+	return netip.ParseAddr(ipStr)
 }
 
 func (p *GCPProvider) getIPv6s(ctx context.Context) ([]string, error) {
@@ -114,13 +101,13 @@ func (p *GCPProvider) getIPv6s(ctx context.Context) ([]string, error) {
 	return strings.Split(ipv6s, "\n"), nil
 }
 
-func (p *GCPProvider) GetPrimaryIPv6(ctx context.Context) (string, error) {
+func (p *GCPProvider) GetPrimaryIPv6(ctx context.Context) (netip.Addr, error) {
 	ipv6s, err := p.getIPv6s(ctx)
 	if err != nil {
-		return "", err
+		return netip.Addr{}, err
 	}
 	if len(ipv6s) == 0 {
-		return "", ErrNotFound
+		return netip.Addr{}, ErrNotFound
 	}
-	return ipv6s[0], nil
+	return netip.ParseAddr(ipv6s[0])
 }

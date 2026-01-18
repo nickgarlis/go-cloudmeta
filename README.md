@@ -1,98 +1,51 @@
-# CloudMeta
+# ipdetect
 
-A lightweight Go library for detecting cloud providers and accessing basic instance metadata.
+Get your server's public IP address on any cloud provider.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/nickgarlis/go-cloudmeta.svg)](https://pkg.go.dev/github.com/nickgarlis/go-cloudmeta)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+## The Problem
 
-## Features
+On AWS, GCP, and Azure, your public IPv4 isn't assigned to a network interface. It's NAT'd at the hypervisor level, so you can't find it by looking at your interfaces. Using external websites to check your IP is unreliable behind NAT and adds external dependencies.
 
-- **Auto-detection** - Automatically detects cloud provider
-- **Multi-cloud** - Supports multiple cloud providers
-- **Zero dependencies** - Only uses Go standard library
+This library queries the cloud provider's metadata service to get your actual public IP.
 
-## Installation
+## Install
 
 ```bash
-go get github.com/nickgarlis/go-cloudmeta
+go get github.com/nickgarlis/go-ipdetect
 ```
 
-## Quick Start
+## Usage
 
 ```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "log"
-
-    "github.com/nickgarlis/go-cloudmeta"
-)
-
-func main() {
-    ctx := context.Background()
-
-    provider, err := cloudmeta.GetProvider(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    fmt.Printf("Running on: %s\n", provider.Name())
-
-    privateIP, err := provider.GetPrivateIPv4(ctx)
-    if err != nil {
-        log.Fatal(err)
-    }
-    fmt.Printf("Private IPv4: %s\n", privateIP)
-}
-```
-
-## API Reference
-
-### Common Interface
-
-```go
-type Provider interface {
-    Name() string
-    GetInstanceID(ctx context.Context) (string, error)
-    GetPrivateIPv4(ctx context.Context) (string, error)
-    GetPublicIPv4(ctx context.Context) (string, error)
-    GetHostname(ctx context.Context) (string, error)
-    GetPrimaryIPv6(ctx context.Context) (string, error)
-}
-```
-
-## Error Handling
-
-```go
-provider, err := cloudmeta.GetProvider(ctx)
+provider, err := ipdetect.GetProvider(context.Background())
 if err != nil {
-    if errors.Is(err, cloudmeta.ErrUnknownProvider) {
-      // Handle unknown provider
-    }
-    // Handle other errors
+    log.Fatal(err)
 }
 
-ipv6, err := provider.GetPrimaryIPv6(ctx)
+fmt.Println("Provider:", provider.Name())
+
+ip, err := provider.GetPublicIPv4(context.Background())
 if err != nil {
-    if errors.Is(err, cloudmeta.ErrNotFound) {
-        // Handle not found case
-    }
-    // Handle error
+    log.Fatal(err)
 }
+fmt.Println("Public IP:", ip)
 ```
 
-## Supported Platforms
+## What it does
 
-- [x] AWS
-- [x] Google Cloud Platform
-- [x] Microsoft Azure
-- [x] DigitalOcean
-- [x] Hetzner Cloud
-- [x] Oracle Cloud Infrastructure
-- [x] OpenStack-based clouds
+- Detects which cloud you're running on (AWS, GCP, Azure, etc.)
+- Queries the metadata service for your default public IPv4 and IPv6
+- Falls back to route inspection for bare metal or local development
+
+## Supported Providers
+
+- AWS
+- GCP
+- Azure
+- Oracle Cloud
+- OpenStack
+- Bare metal / VPS / Local development (via route inspection)
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/nickgarlis/go-cloudmeta/blob/main/LICENSE) file for details.
+MIT
